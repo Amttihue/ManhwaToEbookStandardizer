@@ -1,7 +1,7 @@
 # -*- coding: latin-1 -*-
 
 
-from os import listdir, rename, startfile
+from os import listdir, rename, startfile, path, makedirs
 from os.path import isfile, join
 from PIL import Image
 
@@ -97,10 +97,10 @@ def imgListMerge(imgList):
 
 def is_color_close_to_white(color):
     r, g, b = color
-    return r > 240 and g > 240 and b > 240
+    return r > 250 and g > 250 and b > 250
 
 
-def split_image_by_white_bands(image):
+def split_image_by_white_bands(image,sharp_mode):
     """
     Découpe une image en plusieurs images en enlevant les bandes de couleur blanche.
     
@@ -109,6 +109,14 @@ def split_image_by_white_bands(image):
     
     Retourne une liste d'objets "Image" de la bibliothèque Pillow représentant les images découpées.
     """
+    
+    #Précise le mode de découpage (sharp_mode = True : découpage plus précis mais plus lent, sharp_mode = False : découpage moins précis mais plus rapide)
+    sharpness = 10
+    if sharp_mode:
+        sharpness = 5
+
+    progression_speed = 50
+    
     # Liste des images découpées
     images = []
     
@@ -120,40 +128,117 @@ def split_image_by_white_bands(image):
     
     # Scanner l'image ligne par ligne pour trouver les bandes de blanc
     y1 = 0
-    nbwlines = 0
-    foundCase = False
     while y1 < height:
         # Trouver la première ligne non blanche
-        if not all([is_color_close_to_white(pixels[x, y1]) for x in range(0,width,1)]):
-            #print("Trouvé une première ligne de couleur à la ligne {" + str(y1) +"}.")
-            foundCase = True 
+        while y1 < height and all([is_color_close_to_white(pixels[x, y1]) for x in range(0,width,sharpness)]):
+            y1 += progression_speed
+        
+        # Si on a trouvé une ligne non blanche, on remonte jusqu'à la dernière ligne blanche
+        if y1 < height:
             y2 = y1
+            while y2 > 0 and not all([is_color_close_to_white(pixels[x, y2 - 1]) for x in range(0,width,sharpness)]):
+                y2 -= 1
+            
+            # On avance jusqu'à la dernière ligne non blanche
+            y3 = y1
+            while y3 < height and not all([is_color_close_to_white(pixels[x, y3]) for x in range(0,width,sharpness)]):
+                if (y3 + progression_speed) <= height:
+                    y3 += progression_speed
+                else:
+                    y3 = height
 
-        # Trouver la dernière ligne non blanche
-        while y1 < height and not all([is_color_close_to_white(pixels[x, y1]) for x in range(0,width,1)]): #On check tout les 10 pixels pour gagner du temps, pas besoin de trop de précision en largeur.
-            y1 += 10
-        
-        #ajout du bloc à la liste
-        if foundCase:
-            #print("Case trouvée de la ligne", str(y2),"à la ligne",str(y1))
-            if y1-y2 > 5:
-                images.append(image.crop((0, y2, width, y1))) #Ajout de la sélection à la liste
-            foundCase = False #fin de la détection de la case
+            #si on a trouvé une ligne blanche, on remontre jusqu'à la dernière ligne non blanche
+            y4 = y3
+            while y4 > 0 and all([is_color_close_to_white(pixels[x, y4 - 1]) for x in range(0,width,sharpness)]):
+                y4 -= 1
             
+            # On ajoute la sélection à la liste si elle fait une hauteur de plus de 5 px
+            if y3 - y2 > 5:
+                images.append(image.crop((0, y2, width, y4)))
             
-        
-        y1 += 5 #Pour optimiser la vitesse du programme j'ai changé le palier de 1 à 10. La rapidité est vraiment remarquable par rapport à la précédente version. Cependant, on perd beaucoup en précision. Des gardes fous de précision en mode detection de collision pourraient régler ça assez facilement.
-        nbwlines += 5
+            # On avance au début de la prochaine bande de couleur blanche
+            y1 = y3
+        else:
+            # Si on n'a pas trouvé de ligne non blanche, on avance au début de la prochaine bande de couleur blanche
+            y1 += progression_speed
     
-    #print("Nombre de lignes blanches : " + str(nbwlines) + " sur " + str(height) + " lignes.")
     # Renvoyer la liste des images découpées
     return images
 
 
 
+def process_scans(pathRaws, pathOutput):
+    """
+    Fonction principale qui prend en argument le chemin d'accès aux scans à traiter et le chemin d'accès au dossier de sauvegarde des scans traités
+    puis traite les scans et les sauvegarde dans le dossier de sauvegarde
+    """
+    
+    #Création du dossier de sauvegarde si il n'existe pas
+    if not path.exists(pathOutput):
+        makedirs(pathOutput)
+
+    raws = open_images(pathRaws)        #Liste des scans à traiter
+
+    splitted_images = []                #Liste des images découpées sur les scans
+    spl_prog = 1                        #Progression de la découpe des scans
+    max_height = 1436
+    if len(raws) > 0:
+        max_height = int((raws[0].width/79))*209 #Hauteur maximale d'une concaténation d'images (peut être plus grand si une image seule est plus grande que la limite)
+    
+
+    formatnbspl = "{:0>" + str(len(str(len(raws)))) + "d}" #Formatage du numéro de découpage
+
+    #Découpage des scans
+    for raw in raws:
+        print("Découpage de l'image " + formatnbspl.format(spl_prog) + "/" + str(len(raws)), end="\r")
+        splitted_images.extend(split_image_by_white_bands(raw,True))
+        spl_prog += 1
+        
+    print("Découpage terminé, nombre de découpages : " + str(len(splitted_images)))
+    
+
+    
+    formatnbmerge = "{:0>" + str(len(str(len(splitted_images)))) + "d}" #Formatage du numéro de fusion
+    merge_prog = 1
+    
+    #Fusion des images découpées selon la taille max
+    cases = []
+    for img in splitted_images:
+        print("Concaténation de l'image " + formatnbmerge.format(merge_prog) + "/" + str(len(splitted_images)), end="\r")
+        
+        if cases == []:
+            cases.append(img)
+        else:
+            if (cases[len(cases) - 1].height + img.height > max_height):
+                cases.append(img)
+            else:
+                cases[len(cases) - 1] = imgMerge(cases[len(cases) - 1],img)
+    
+    print("Concaténation terminée, nombre de concaténations : " + str(len(cases)))
+       
+    
+    
+    formatnb = "{:0>" + str(len(str(len(splitted_images)))) + "d}" #Formatage du numéro de sauvegarde
+    nb_res = 0 #Nombre de résultats sauvegardés
+
+    #Sauvegarde des images fusionnées
+    for case in cases:
+        print("Sauvegarde de l'image " + formatnb.format(nb_res + 1) + "/" + str(len(cases)) + " sauvegardée", end="\r")
+        case.save(pathOutput + "\\" + str(nb_res) + ".jpg")
+        nb_res += 1
+        
+    print()
 
 
     
+
+
+
+
+process_scans(pathRaws, pathOutput)
+
+
+"""  
 ###Tests des fonctions
 images = open_images(pathRaws)
 
@@ -167,28 +252,31 @@ print("Nombre d'images dans le dossier d'input : " + str(len(images)))
 splitted_images = []
 
 spl_prog = 1
+formatnbspl = "{:0>" + str(len(str(len(images)))) + "d}"
 for image in images:
-    print("Découpage de l'image " + str(spl_prog) + " sur " + str(len(images)))
-    splitted_images.extend(split_image_by_white_bands(image))
+    print("Découpage de l'image " + formatnbspl.format(spl_prog) + "/" + str(len(images)))
+    splitted_images.extend(split_image_by_white_bands(image,False))
     spl_prog += 1
-
+    
 #splitted_images = split_image_by_white_bands(images[0])
 print("Nombre d'images détectées dans les images d'origine : " + str(len(splitted_images)))
 
+save_subcases = False
 
-i = 0
-for image in splitted_images:
-    save_image(image, pathOutput + r"\test" + str(i) + ".png")
-    print("Image " + str(i) + " sauvegardée")
-    i += 1
-    
+if save_subcases:
+    i = 0
+    formatnb = "{:0>" + str(len(str(len(splitted_images)))) + "d}" #On définit le type de formatage pour avoir une progression propre quant à l'état de la sauvegarde
+    for image in splitted_images:
+        save_image(image, pathOutput + r"\test" + str(i) + ".png")
+        i += 1
+        print("Image " + formatnb.format(i) + "/" + str(len(splitted_images)) + " sauvegardée")
+        
+else:
+    save_image(imgListMerge(splitted_images), pathOutput + r"\test.jpg")
+
+    open_image_with_windows_explorer(pathOutput + r"\test.jpg")
 
 """
-save_image(imgListMerge(splitted_images), pathOutput + r"\test.jpg")
-
-open_image_with_windows_explorer(pathOutput + r"\test.jpg")
-"""
-
 
 
 """
