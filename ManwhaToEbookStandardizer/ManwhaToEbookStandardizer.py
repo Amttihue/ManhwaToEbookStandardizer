@@ -1,7 +1,7 @@
 # -*- coding: latin-1 -*-
 
 
-from os import listdir, rename, startfile, path, makedirs
+from os import listdir, rename, startfile, path, makedirs, remove
 from os.path import isfile, join
 from PIL import Image
 
@@ -44,7 +44,7 @@ def open_images(path):
 #puis renvoie le résultat de la fusion verticale de ces deux images
 def imgMerge(img1, img2):
     # Fusionner les images en les concaténant verticalement
-    image = Image.new('RGB', (max(img1.width, img2.width), img1.height + img2.height))
+    image = Image.new('RGB', (max(img1.width, img2.width), img1.height + img2.height),"WHITE")
     image.paste(img1, (0, 0))
     image.paste(img2, (0, img1.height))
     
@@ -95,9 +95,31 @@ def imgListMerge(imgList):
         imgList[i+1] = imgMerge(imgList[i], imgList[i+1])
     return imgList[len(imgList)-1]
 
+
+def convert_webp_to_png(source_folder):
+    # Parcours du dossier source
+    for filename in listdir(source_folder):
+      # Si le fichier est une image WebP
+      if filename.endswith('.webp'):
+        # Chargement de l'image WebP
+        webp_image = Image.open(path.join(source_folder, filename))
+        # Conversion de l'image en L
+        rgb_image = webp_image.convert('RGB')
+        # Conversion de l'image en PNG
+        # Enregistrement de l'image PNG dans le dossier de destination
+        rgb_image.save(path.join(source_folder, filename.replace('.webp', '.png')))
+        # Suppression de l'image WebP originale
+        remove(path.join(source_folder, filename))
+
+    print('Conversion terminée !')
+
+
+
 def is_color_close_to_white(color):
     r, g, b = color
-    return r > 250 and g > 250 and b > 250
+    close_to_white = r > 250 and g > 250 and b > 250
+    close_to_black = r < 5 and g < 5 and b < 5
+    return close_to_white or close_to_black
 
 
 def split_image_by_white_bands(image,sharp_mode):
@@ -126,6 +148,8 @@ def split_image_by_white_bands(image,sharp_mode):
     # Largeur et hauteur de l'image
     width, height = image.size
     
+    #print("Taille de l'image",str(image.height))
+    
     # Scanner l'image ligne par ligne pour trouver les bandes de blanc
     y1 = 0
     while y1 < height:
@@ -153,8 +177,10 @@ def split_image_by_white_bands(image,sharp_mode):
                 y4 -= 1
             
             # On ajoute la sélection à la liste si elle fait une hauteur de plus de 5 px
-            if y3 - y2 > 5:
+            if y4 - y2 > 5:
+                #print("Image trouvée :", str(y4- y2), "px de haut")
                 images.append(image.crop((0, y2, width, y4)))
+                print("Nombre d'images découvertes : " + "{:0>3d}".format(len(images)), end="\r")
             
             # On avance au début de la prochaine bande de couleur blanche
             y1 = y3
@@ -163,6 +189,7 @@ def split_image_by_white_bands(image,sharp_mode):
             y1 += progression_speed
     
     # Renvoyer la liste des images découpées
+    print()
     return images
 
 
@@ -179,24 +206,19 @@ def process_scans(pathRaws, pathOutput):
 
     raws = open_images(pathRaws)        #Liste des scans à traiter
 
+    print("Traitement des scans en cours...")
+    raws = imgListMerge(raws)           #Fusion des scans
+
     splitted_images = []                #Liste des images découpées sur les scans
     spl_prog = 1                        #Progression de la découpe des scans
-    max_height = 1436
-    if len(raws) > 0:
-        max_height = int((raws[0].width/79))*209 #Hauteur maximale d'une concaténation d'images (peut être plus grand si une image seule est plus grande que la limite)
     
-
-    formatnbspl = "{:0>" + str(len(str(len(raws)))) + "d}" #Formatage du numéro de découpage
-
-    #Découpage des scans
-    for raw in raws:
-        print("Découpage de l'image " + formatnbspl.format(spl_prog) + "/" + str(len(raws)), end="\r")
-        splitted_images.extend(split_image_by_white_bands(raw,True))
-        spl_prog += 1
-        
+    max_height = 1500
+    
+    print("Découpage des scans en cours...")
+    splitted_images.extend(split_image_by_white_bands(raws,True))
     print("Découpage terminé, nombre de découpages : " + str(len(splitted_images)))
     
-
+    max_height = max_height/720*splitted_images[0].width
     
     formatnbmerge = "{:0>" + str(len(str(len(splitted_images)))) + "d}" #Formatage du numéro de fusion
     merge_prog = 1
@@ -234,7 +256,7 @@ def process_scans(pathRaws, pathOutput):
 
 
 
-
+convert_webp_to_png(pathRaws) #Conversion des scans au format png
 process_scans(pathRaws, pathOutput)
 
 
