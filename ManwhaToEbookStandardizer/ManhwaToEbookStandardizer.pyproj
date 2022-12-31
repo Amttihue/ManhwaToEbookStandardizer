@@ -3,13 +3,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>641465ed-ee37-4cc6-88a6-3de5f7b44cfd</ProjectGuid>
-    <ProjectHome>.</ProjectHome>
-    <StartupFile>ManwhaToEbookStandardizer.py</StartupFile>
+    <ProjectHome>
+    </ProjectHome>
+    <StartupFile>ManhwaToEbookStandardizer.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
-    <Name>ManwhaToEbookStandardizer</Name>
+    <Name>ManhwaToEbookStandardizer</Name>
     <RootNamespace>ManwhaToEbookStandardizer</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -21,7 +22,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="ManwhaToEbookStandardizer.py" />
+    <Compile Include="ManhwaToEbookStandardizer.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

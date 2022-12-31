@@ -340,9 +340,9 @@ def compress_to_cbz(src_path, archive_name='archive'):
 
                 
 
-def process_manwha(pathRaws, pathOutput):
+def process_manhwa(pathRaws, pathOutput):
     """
-    Traite les scans d'un manwha et les sauvegarde dans un dossier.
+    Traite les scans d'un manhwa et les sauvegarde dans un dossier.
     
     Arguments :
     - pathRaws : le chemin d'accès au dossier contenant des chapitres de scans à traiter (chaîne de caractères)
@@ -369,5 +369,5 @@ def process_manwha(pathRaws, pathOutput):
 
 
 
-process_manwha(pathRaws, pathOutput)
+process_manhwa(pathRaws, pathOutput)
 
