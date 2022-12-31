@@ -1,26 +1,41 @@
 # -*- coding: latin-1 -*-
 
-
+#Imports
 from os import listdir, rename, startfile, path, makedirs, remove
 from os.path import isfile, join
+import shutil
 from PIL import Image
 
 #Constantes
-pathRaws = r"Scans\Raws"
-pathOutput = r"Scans\Output"
+pathRaws = r"Scans\Raws"        #Chemin vers le dossier contenant des chapitres de scans bruts
+pathOutput = r"Scans\Output"    #Chemin vers le dossier contenant les chapitres avec les scans standardisés
 
 extension = ".jpg"
 
+debug_mode = False              #Si True, affiche les messages de debug (peut être foireux pour certains messages. Ce sera à corriger.)
 
-#Fonction prenant en argument un chemin et renvoyant la liste des noms des fichiers de ce dossier
+
+
+
+
+
+
+
+#Début du programme
+
 def getFiles(path):
+    """
+    Récupère la liste des fichiers d'un dossier.
+    
+    Arguments :
+    - path : le chemin du dossier (chaîne de caractères)
+    
+    Retourne la liste des noms des fichiers du dossier.
+    """
+    
     files = [f for f in listdir(path) if isfile(join(path,f))]
     return files
 
-print(getFiles(pathRaws))
-
-#Soit la fonction open_images qui prend en argument un répertoire source contenant des images à charger en mémoire,
-#puis renvoie une liste d'objets Image de la bibliothèque Pillow
 def open_images(path):
     """
     Ouvre toutes les images contenues dans un dossier.
@@ -30,6 +45,7 @@ def open_images(path):
     
     Retourne une liste d'objets Image de la bibliothèque Pillow.
     """
+    
     images = []
     for filename in listdir(path):
         # On vérifie que le fichier est une image
@@ -40,9 +56,17 @@ def open_images(path):
     return images
 
 
-#Soit la fonction imgMerge qui prend en argument deux images précédemment chargées en mémoire,
-#puis renvoie le résultat de la fusion verticale de ces deux images
 def imgMerge(img1, img2):
+    """
+    Fusionne deux images verticalement.
+    
+    Arguments :
+    - img1 : la première image à fusionner (objet Image de la bibliothèque Pillow)
+    - img2 : la deuxième image à fusionner (objet Image de la bibliothèque Pillow)
+    
+    Retourne l'image fusionnée.
+    """
+    
     # Fusionner les images en les concaténant verticalement
     image = Image.new('RGB', (max(img1.width, img2.width), img1.height + img2.height),"WHITE")
     image.paste(img1, (0, 0))
@@ -52,8 +76,6 @@ def imgMerge(img1, img2):
     return image
 
 
-#Soit la fonction save_image qui prend en argument une image et un chemin de sauvegarde (path + nom)
-#puis sauvegarde l'image dans le fichier correspondant
 def save_image(image, filename):
     """
     Sauvegarde une image dans un fichier.
@@ -68,8 +90,7 @@ def save_image(image, filename):
         filename += extension
     image.save(filename)
 
-
-#Soit la fonction open_image_with_windows_explorer qui prend en argument un chemin d'accès à une image et l'ouvre dans la visionneuse de photos windows
+    
 def open_image_with_windows_explorer(image_path):
     """
     Ouvre une image avec l'explorateur d'images de Windows.
@@ -79,6 +100,7 @@ def open_image_with_windows_explorer(image_path):
     
     Retourne True si l'image a été ouverte avec succès, False sinon.
     """
+    
     try:
         # Ouvrir le fichier avec l'application associée sur le système
         startfile(image_path)
@@ -88,34 +110,63 @@ def open_image_with_windows_explorer(image_path):
         print(f"Impossible d'ouvrir l'image : {e}")
         return False
 
-
-#Soit la fonction imgListMerge qui prend en argument une liste d'images précédemment chargées en mémoire puis les fusionne les unes à la suite des autres
+    
 def imgListMerge(imgList):
+    """
+    Fusionne une liste d'images en une seule image.
+    
+    Arguments :
+    - imgList : la liste d'images à fusionner (liste d'objets Image de la bibliothèque Pillow)
+    
+    Retourne l'image fusionnée.
+    """
+    
     for i in range(len(imgList)-1):
         imgList[i+1] = imgMerge(imgList[i], imgList[i+1])
     return imgList[len(imgList)-1]
 
 
 def convert_webp_to_png(source_folder):
+    """
+    Convertit tous les fichiers .webp d'un dossier en .png.
+    
+    Arguments :
+    - source_folder : le chemin du dossier contenant les fichiers .webp à convertir (chaîne de caractères)
+    """
+    
     # Parcours du dossier source
+    webPDetected = False
     for filename in listdir(source_folder):
       # Si le fichier est une image WebP
       if filename.endswith('.webp'):
         # Chargement de l'image WebP
+        if webPDetected == False:
+            if debug_mode :
+                print("WebP detecté, début de la conversion des fichiers en PNG...", end="\r")
+            webPDetected = True
         webp_image = Image.open(path.join(source_folder, filename))
-        # Conversion de l'image en L
+        # Conversion de l'image en RGB
         rgb_image = webp_image.convert('RGB')
-        # Conversion de l'image en PNG
-        # Enregistrement de l'image PNG dans le dossier de destination
+        # Enregistrement de l'image dans le dossier de destination
         rgb_image.save(path.join(source_folder, filename.replace('.webp', '.png')))
         # Suppression de l'image WebP originale
         remove(path.join(source_folder, filename))
-
-    print('Conversion terminée !')
+    
+    if debug_mode:
+        print('Conversion terminée !')
 
 
 
 def is_color_close_to_white(color):
+    """
+    Vérifie si une couleur est proche du blanc (ou du noir pour les fonds noir. Malgré son nom, la fonction a un peu changé pour coller à certaines situations).
+    
+    Arguments :
+    - color : la couleur à vérifier (tuple de 3 entiers entre 0 et 255)
+    
+    Retourne True si la couleur est proche du blanc, False sinon.
+    """
+    
     r, g, b = color
     close_to_white = r > 250 and g > 250 and b > 250
     close_to_black = r < 5 and g < 5 and b < 5
@@ -180,7 +231,8 @@ def split_image_by_white_bands(image,sharp_mode):
             if y4 - y2 > 5:
                 #print("Image trouvée :", str(y4- y2), "px de haut")
                 images.append(image.crop((0, y2, width, y4)))
-                print("Nombre d'images découvertes : " + "{:0>3d}".format(len(images)), end="\r")
+                if debug_mode:
+                    print("Nombre d'images découvertes : " + "{:0>3d}".format(len(images)), end="\r")
             
             # On avance au début de la prochaine bande de couleur blanche
             y1 = y3
@@ -189,24 +241,31 @@ def split_image_by_white_bands(image,sharp_mode):
             y1 += progression_speed
     
     # Renvoyer la liste des images découpées
-    print()
+    if debug_mode:
+        print()
     return images
 
 
 
-def process_scans(pathRaws, pathOutput):
+def process_chapter(pathRaws, pathOutput):
     """
-    Fonction principale qui prend en argument le chemin d'accès aux scans à traiter et le chemin d'accès au dossier de sauvegarde des scans traités
-    puis traite les scans et les sauvegarde dans le dossier de sauvegarde
+    Traite les scans d'un chapitre et les sauvegarde dans un dossier.
+    
+    Arguments :
+    - pathRaws : le chemin d'accès au dossier contenant les scans à traiter (chaîne de caractères)
+    - pathOutput : le chemin d'accès au dossier où sauvegarder les scans traités (chaîne de caractères)
     """
     
     #Création du dossier de sauvegarde si il n'existe pas
     if not path.exists(pathOutput):
         makedirs(pathOutput)
+        
+    convert_webp_to_png(pathRaws) #Conversion des scans au format png
 
     raws = open_images(pathRaws)        #Liste des scans à traiter
 
-    print("Traitement des scans en cours...")
+    if debug_mode :
+        print("Traitement des scans en cours...")
     raws = imgListMerge(raws)           #Fusion des scans
 
     splitted_images = []                #Liste des images découpées sur les scans
@@ -214,9 +273,11 @@ def process_scans(pathRaws, pathOutput):
     
     max_height = 1500
     
-    print("Découpage des scans en cours...")
+    if debug_mode:
+        print("Découpage des scans en cours...")
     splitted_images.extend(split_image_by_white_bands(raws,True))
-    print("Découpage terminé, nombre de découpages : " + str(len(splitted_images)))
+    if debug_mode:
+        print("Découpage terminé, nombre de découpages : " + str(len(splitted_images)))
     
     max_height = max_height/720*splitted_images[0].width
     
@@ -226,7 +287,8 @@ def process_scans(pathRaws, pathOutput):
     #Fusion des images découpées selon la taille max
     cases = []
     for img in splitted_images:
-        print("Concaténation de l'image " + formatnbmerge.format(merge_prog) + "/" + str(len(splitted_images)), end="\r")
+        if debug_mode:
+            print("Concaténation de l'image " + formatnbmerge.format(merge_prog) + "/" + str(len(splitted_images)), end="\r")
         
         if cases == []:
             cases.append(img)
@@ -236,154 +298,76 @@ def process_scans(pathRaws, pathOutput):
             else:
                 cases[len(cases) - 1] = imgMerge(cases[len(cases) - 1],img)
     
-    print("Concaténation terminée, nombre de concaténations : " + str(len(cases)))
+    if debug_mode:
+        print("Concaténation terminée, nombre de concaténations : " + str(len(cases)))
        
     
     
-    formatnb = "{:0>" + str(len(str(len(splitted_images)))) + "d}" #Formatage du numéro de sauvegarde
-    nb_res = 0 #Nombre de résultats sauvegardés
+    formatnb = "{:0>" + str(len(str(len(cases)))) + "d}" #Formatage du numéro de sauvegarde
+    nb_res = 1 #Nombre de résultats sauvegardés
 
     #Sauvegarde des images fusionnées
     for case in cases:
-        print("Sauvegarde de l'image " + formatnb.format(nb_res + 1) + "/" + str(len(cases)) + " sauvegardée", end="\r")
-        case.save(pathOutput + "\\" + str(nb_res) + ".jpg")
+        if debug_mode:
+            print("Sauvegarde de l'image " + formatnb.format(nb_res) + "/" + str(len(cases)) + " sauvegardée", end="\r")
+        case.save(pathOutput + "\\" + formatnb.format(nb_res) + ".jpg") #On formate le nom de façon à ce que la première image ressorte en format 0x ou 00x selon le nombre d'images
         nb_res += 1
         
+    if debug_mode:
+        print()
+
+
+
+def compress_to_cbz(src_path, archive_name='archive'):
+    """
+    Compresse le contenu du dossier dans une archive CBZ.
+    
+    Arguments :
+    - src_path : Le chemin d'accès du dossier à compresser (chaîne de caractères)
+    - archive_name (optionnel) : le nom de l'archive (chaîne de caractères)
+    """
+    
+    # Créer un zipfile à partir de src_path et le renommer en .cbz
+    shutil.make_archive(src_path + '/' + archive_name, 'zip', src_path, '.')
+    rename(src_path + '/' + archive_name + '.zip', src_path + '/' + archive_name + '.cbz')
+    
+    # Récupérer la liste de tous les dossiers dans src_path
+    folders = [f for f in listdir(src_path) if path.isdir(path.join(src_path, f))]
+
+    # Pour chaque dossier, supprimer le dossier et tout son contenu
+    for folder in folders:
+        shutil.rmtree(path.join(src_path, folder))
+
+                
+
+def process_manwha(pathRaws, pathOutput):
+    """
+    Traite les scans d'un manwha et les sauvegarde dans un dossier.
+    
+    Arguments :
+    - pathRaws : le chemin d'accès au dossier contenant des chapitres de scans à traiter (chaîne de caractères)
+    - pathOutput : le chemin d'accès au dossier où sauvegarder les chapitres de scans traités (chaîne de caractères)
+    """
+    
+    #Création du dossier de sauvegarde si il n'existe pas
+    if not path.exists(pathOutput):
+        makedirs(pathOutput)
+    
+    #Liste des chapitres à traiter
+    chapters = listdir(pathRaws)
+    
+    #Boucle sur chaque chapitre
+    for chapter in chapters:
+        print("Traitement du chapitre " + chapter + "/" + str(len(chapters)), end="\r")
+        process_chapter(pathRaws + "\\" + chapter, pathOutput + "\\" + chapter)
     print()
-
-
+    print("Traitement terminé, compression de l'archive")
+    compress_to_cbz(pathOutput)
+    print("Compression terminée")
     
 
 
 
-convert_webp_to_png(pathRaws) #Conversion des scans au format png
-process_scans(pathRaws, pathOutput)
 
+process_manwha(pathRaws, pathOutput)
 
-"""  
-###Tests des fonctions
-images = open_images(pathRaws)
-
-
-#On printn la longueur de images :
-print("Nombre d'images dans le dossier d'input : " + str(len(images)))
-
-
-
-
-splitted_images = []
-
-spl_prog = 1
-formatnbspl = "{:0>" + str(len(str(len(images)))) + "d}"
-for image in images:
-    print("Découpage de l'image " + formatnbspl.format(spl_prog) + "/" + str(len(images)))
-    splitted_images.extend(split_image_by_white_bands(image,False))
-    spl_prog += 1
-    
-#splitted_images = split_image_by_white_bands(images[0])
-print("Nombre d'images détectées dans les images d'origine : " + str(len(splitted_images)))
-
-save_subcases = False
-
-if save_subcases:
-    i = 0
-    formatnb = "{:0>" + str(len(str(len(splitted_images)))) + "d}" #On définit le type de formatage pour avoir une progression propre quant à l'état de la sauvegarde
-    for image in splitted_images:
-        save_image(image, pathOutput + r"\test" + str(i) + ".png")
-        i += 1
-        print("Image " + formatnb.format(i) + "/" + str(len(splitted_images)) + " sauvegardée")
-        
-else:
-    save_image(imgListMerge(splitted_images), pathOutput + r"\test.jpg")
-
-    open_image_with_windows_explorer(pathOutput + r"\test.jpg")
-
-"""
-
-
-"""
-imgMerge : fusionne deux images (ou plus en bouclant son résultat), return une image ou un fichier temp (à voir avec l'outil utilisé)
-^ pas aussi simple
-
-
-
-VERSION AVANCEE
-blankFinder : cherche les lignes de blanc d'une image, retourne des coordonnées
-
-
-
-
--------------
-Comment traiter l'image ?
-1 ouvrir chaque image
-2 y chercher du blanc
-3 rogner le blanc des images (trouver un moyen de rogner celui qui est à l'intérieur)
-4 fusionner toutes les images traitées celon des dimensions données (ou relatives)
-
-OU
-
-Ouvrir et fusionner toutes les images en une seule immense image
-la redécouper en extrayant dans l'ordre tout ce qui n'est pas du blanc
-refusionner toutes les images en une seule immense image
-la redécouper selon un format prédéfinit (ou relatif ?)
-
-si la mémoire ram peut gérer la seconde solution, c'est sûrement la façon la plus simple de procéder
-sinon on peut procéder par blocs de x images
-
-wait, troisième solution qui est en fait la première revisitée avec la seconde :
-1 ouvrir chaque image
-2 en exporter tout ce qui n'est pas du blanc
-3 tout fusionner en une immense image (ou par blocs)
-4 redécouper selon un format prédéfinit (ou relatif ?)
-
-SOLUTION "FINALE" (la mienne, pas celle de l'autre moustachu)
-après une autre solution qui éviterait le découpage d'une illustration et 
-de charger une image immenssément longue en mémoire, ce serait d'exécuter 
-les deux premières étapes de la troisième solution, de fusionner les images
-selon une limite de pixels à respecter en hauteur quant au résultat de la 
-dite fusion des images, sinon on ajoute pas l'image suivante à la fusion 
-mais à la suivante.
-
-ça éviterait le découpage fréquent des textes et illustrations.
-Cependant, une image trop longue de base serait tout de même découpée
-suivant la limite max imposée, et ce malgré le malencontreux découpage
-d'une illustration ou d'un dialogue.
-
-Afin d'y palier, si cette image anormalement longue est due à un changement
-de couleur d'arrière plan, il serait intéressant, au lieu de seulement 
-supprimer les blancs,de supprimer les blocs de noirs, voir de "simplement"
-check si toute une ligne est de la même couleur. Cela pourrait cependant 
-poser problème pour les dégradés (à moins de vérifier si cette couleur est 
-omniprésente sur tout le bloc mais ce serait chiant à faire en délimitant 
-le dégradé de l'illustration)
-Ainsi, vérifier seulement le noir complet (en plus du blanc) serait peut 
-être intéressant, mais aussi dangereux (risque de supprimer des 
-séparateurs de dialognes, cases, etc)
-"""
-
-
-"""
-def countTotalFiles(c1,c2):
-    return len(c1) + len(c2)
-    
-
-def collecFusion(path1,path2,path3):
-    collec1 = getFiles(path1)
-    collec2 = getFiles(path2)
-    filesCount = countTotalFiles(collec1,collec2)
-    maxDigit = len(str(filesCount))
-
-    currentNumber = 1
-    format = "{:0" + str(maxDigit) +"}"
-
-    for f in collec1:
-        rename(path1 + "\\" + f, path3 + "\\" + format.format(currentNumber) + extension)
-        currentNumber += 1
-
-    for f in collec2:
-        rename(path2 + "\\" + f, path3 + "\\" + format.format(currentNumber) + extension)
-        currentNumber += 1
-"""
-
-
-#collecFusion(pathCollec1,pathCollec2,pathCollec1)
