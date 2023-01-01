@@ -10,9 +10,9 @@ from PIL import Image
 pathRaws = r"Scans\Raws"        #Chemin vers le dossier contenant des chapitres de scans bruts
 pathOutput = r"Scans\Output"    #Chemin vers le dossier contenant les chapitres avec les scans standardisés
 
-extension = ".jpg"
+extension = ".png"
 
-debug_mode = False              #Si True, affiche les messages de debug (peut être foireux pour certains messages. Ce sera à corriger.)
+debug_mode = True              #Si True, affiche les messages de debug (peut être foireux pour certains messages. Ce sera à corriger.)
 
 
 
@@ -229,6 +229,7 @@ def split_image_by_white_bands(image,sharp_mode):
             
             # On ajoute la sélection à la liste si elle fait une hauteur de plus de 5 px
             if y4 - y2 > 5:
+                
                 #print("Image trouvée :", str(y4- y2), "px de haut")
                 images.append(image.crop((0, y2, width, y4)))
                 if debug_mode:
@@ -310,7 +311,7 @@ def process_chapter(pathRaws, pathOutput):
     for case in cases:
         if debug_mode:
             print("Sauvegarde de l'image " + formatnb.format(nb_res) + "/" + str(len(cases)) + " sauvegardée", end="\r")
-        case.save(pathOutput + "\\" + formatnb.format(nb_res) + ".jpg") #On formate le nom de façon à ce que la première image ressorte en format 0x ou 00x selon le nombre d'images
+        case.save(pathOutput + "\\" + formatnb.format(nb_res) + extension) #On formate le nom de façon à ce que la première image ressorte en format 0x ou 00x selon le nombre d'images
         nb_res += 1
         
     if debug_mode:
@@ -358,9 +359,9 @@ def process_manhwa(pathRaws, pathOutput):
     
     #Boucle sur chaque chapitre
     for chapter in chapters:
-        print("Traitement du chapitre " + chapter + "/" + str(len(chapters)), end="\r")
+        print("Traitement du chapitre " + chapter + "/" + str(len(chapters)))#, end="\r")
         process_chapter(pathRaws + "\\" + chapter, pathOutput + "\\" + chapter)
-    print()
+    #print()
     print("Traitement terminé, compression de l'archive")
     compress_to_cbz(pathOutput)
     print("Compression terminée")
