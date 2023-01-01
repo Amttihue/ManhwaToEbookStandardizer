@@ -67,8 +67,20 @@ def imgMerge(img1, img2):
     Retourne l'image fusionnée.
     """
     
+    
+    #On redimensionne l'image la plus large à la largeur de l'image la moins large. ça permet d'éviter la génération d'une bande blanche sur la droite de l'image si les deux images n'ont pas la même largeur.
+    min_width = min(img1.width, img2.width)
+    new_height = 0
+    if img1.width > img2.width:
+        new_height = int(min_width * img1.height / img1.width)
+        img1 = img1.resize((min_width, new_height))
+    elif img2.width > img1.width:
+        new_height = int(min_width * img2.height / img2.width)
+        img2 = img2.resize((min_width, new_height))
+
     # Fusionner les images en les concaténant verticalement
     image = Image.new('RGB', (max(img1.width, img2.width), img1.height + img2.height),"WHITE")
+    
     image.paste(img1, (0, 0))
     image.paste(img2, (0, img1.height))
     
@@ -372,3 +384,4 @@ def process_manhwa(pathRaws, pathOutput):
 
 process_manhwa(pathRaws, pathOutput)
 
+#TODO: Corriger la génération d'images trop longues occasionnelles
