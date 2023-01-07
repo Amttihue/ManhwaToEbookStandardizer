@@ -7,10 +7,13 @@ import shutil
 from PIL import Image
 
 #Constantes
-pathRaws = r"Scans\Raws"        #Chemin vers le dossier contenant des chapitres de scans bruts
-pathOutput = r"Scans\Output"    #Chemin vers le dossier contenant les chapitres avec les scans standardisés
+conf_pathRaws = r"Scans\Raws"        #Chemin vers le dossier contenant des chapitres de scans bruts
+conf_pathOutput = r"Scans\Output"    #Chemin vers le dossier contenant les chapitres avec les scans standardisés
 
-extension = ".png"
+conf_extension = ".png"
+
+conf_sharp_mode = False
+conf_slow_prog = True
 
 debug_mode = True              #Si True, affiche les messages de debug (peut être foireux pour certains messages. Ce sera à corriger.)
 
@@ -99,7 +102,7 @@ def save_image(image, filename):
 
     # On vérifie que le fichier a bien une extension
     if not filename.endswith(".jpg") and not filename.endswith(".png"):
-        filename += extension
+        filename += conf_extension
     image.save(filename)
 
     
@@ -291,7 +294,7 @@ def process_chapter(pathRaws, pathOutput):
     
     if debug_mode:
         print("Découpage des scans en cours...")
-    splitted_images.extend(split_image_by_white_bands(raws,False,True))
+    splitted_images.extend(split_image_by_white_bands(raws,conf_sharp_mode, conf_slow_prog))
     if debug_mode:
         print("Découpage terminé, nombre de découpages : " + str(len(splitted_images)))
     
@@ -327,7 +330,7 @@ def process_chapter(pathRaws, pathOutput):
     for case in cases:
         if debug_mode:
             print("Sauvegarde de l'image " + formatnb.format(nb_res) + "/" + str(len(cases)) + " sauvegardée", end="\r")
-        case.save(pathOutput + "\\" + formatnb.format(nb_res) + extension) #On formate le nom de façon à ce que la première image ressorte en format 0x ou 00x selon le nombre d'images
+        case.save(pathOutput + "\\" + formatnb.format(nb_res) + conf_extension) #On formate le nom de façon à ce que la première image ressorte en format 0x ou 00x selon le nombre d'images
         nb_res += 1
         
     if debug_mode:
@@ -386,6 +389,6 @@ def process_manhwa(pathRaws, pathOutput):
 
 
 
-process_manhwa(pathRaws, pathOutput)
+process_manhwa(conf_pathRaws, conf_pathOutput)
 
 #TODO: Corriger la génération d'images trop longues occasionnelles
