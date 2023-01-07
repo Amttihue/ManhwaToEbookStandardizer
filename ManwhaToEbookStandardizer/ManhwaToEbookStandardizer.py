@@ -180,7 +180,7 @@ def is_color_close_to_white(color):
     """
     
     r, g, b = color
-    close_to_white = r > 250 and g > 250 and b > 250
+    close_to_white = r > 240 and g > 240 and b > 240
     close_to_black = r < 5 and g < 5 and b < 5
     return close_to_white or close_to_black
 
@@ -297,6 +297,7 @@ def process_chapter(pathRaws, pathOutput):
     formatnbmerge = "{:0>" + str(len(str(len(splitted_images)))) + "d}" #Formatage du numéro de fusion
     merge_prog = 1
     
+    #TODO : Mettre ce script dans une fonction
     #Fusion des images découpées selon la taille max
     cases = []
     for img in splitted_images:
