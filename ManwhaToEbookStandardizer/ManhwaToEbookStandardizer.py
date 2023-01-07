@@ -185,7 +185,7 @@ def is_color_close_to_white(color):
     return close_to_white or close_to_black
 
 
-def split_image_by_white_bands(image,sharp_mode):
+def split_image_by_white_bands(image,sharp_mode, slow_prog):
     """
     Découpe une image en plusieurs images en enlevant les bandes de couleur blanche.
     
@@ -196,11 +196,14 @@ def split_image_by_white_bands(image,sharp_mode):
     """
     
     #Précise le mode de découpage (sharp_mode = True : découpage plus précis mais plus lent, sharp_mode = False : découpage moins précis mais plus rapide)
-    sharpness = 10
+    sharpness = 5
     if sharp_mode:
-        sharpness = 5
+        sharpness = 1
 
+    #Si slow_prog = True, évite les découpages trop rapides (pour éviter les erreurs). Ralentit un peu le programme.
     progression_speed = 50
+    if slow_prog:
+        progression_speed = 10
     
     # Liste des images découpées
     images = []
@@ -288,7 +291,7 @@ def process_chapter(pathRaws, pathOutput):
     
     if debug_mode:
         print("Découpage des scans en cours...")
-    splitted_images.extend(split_image_by_white_bands(raws,True))
+    splitted_images.extend(split_image_by_white_bands(raws,False,True))
     if debug_mode:
         print("Découpage terminé, nombre de découpages : " + str(len(splitted_images)))
     
