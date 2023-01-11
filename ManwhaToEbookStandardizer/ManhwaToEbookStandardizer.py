@@ -10,7 +10,7 @@ from PIL import Image
 conf_pathRaws = r"Scans\Raws"        #Chemin vers le dossier contenant des chapitres de scans bruts
 conf_pathOutput = r"Scans\Output"    #Chemin vers le dossier contenant les chapitres avec les scans standardisés
 
-conf_extension = ".png"
+conf_extension = ".jpg"              #png = taille max image infinie; jpg = images mieux compressées mais taille max image limitée
 
 conf_sharp_mode = False
 conf_slow_prog = True
@@ -157,13 +157,13 @@ def convert_webp_to_png(source_folder):
         # Chargement de l'image WebP
         if webPDetected == False:
             if debug_mode :
-                print("WebP detecté, début de la conversion des fichiers en PNG...", end="\r")
+                print("WebP detecté, début de la conversion des fichiers en JPG...", end="\r")
             webPDetected = True
         webp_image = Image.open(path.join(source_folder, filename))
         # Conversion de l'image en RGB
         rgb_image = webp_image.convert('RGB')
         # Enregistrement de l'image dans le dossier de destination
-        rgb_image.save(path.join(source_folder, filename.replace('.webp', '.png')))
+        rgb_image.save(path.join(source_folder, filename.replace('.webp', '.jpg')))
         # Suppression de l'image WebP originale
         remove(path.join(source_folder, filename))
     
@@ -330,7 +330,11 @@ def process_chapter(pathRaws, pathOutput):
     for case in cases:
         if debug_mode:
             print("Sauvegarde de l'image " + formatnb.format(nb_res) + "/" + str(len(cases)) + " sauvegardée", end="\r")
-        case.save(pathOutput + "\\" + formatnb.format(nb_res) + conf_extension) #On formate le nom de façon à ce que la première image ressorte en format 0x ou 00x selon le nombre d'images
+        if case.height > 65499:
+            case.save(pathOutput + "\\" + formatnb.format(nb_res) + ".png")
+        else:
+            case.save(pathOutput + "\\" + formatnb.format(nb_res) + conf_extension)
+        #case.save(pathOutput + "\\" + formatnb.format(nb_res) + conf_extension) #On formate le nom de façon à ce que la première image ressorte en format 0x ou 00x selon le nombre d'images
         nb_res += 1
         
     if debug_mode:
